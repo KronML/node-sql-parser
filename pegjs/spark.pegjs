@@ -1759,11 +1759,7 @@ between_or_not_between_op
   / KW_BETWEEN
 
 like_op
-  = nk:(KW_NOT __ KW_LIKE) { return nk[0] + ' ' + nk[2]; }
-  / KW_LIKE
-
-ilike_op
-  = nk:(KW_NOT __ KW_LIKE / KW_ILIKE) { return nk[0] + ' ' + nk[2]; }
+  = nk:(KW_NOT __ (KW_LIKE / KW_ILIKE)) { /* => 'LIKE' */ return nk[0] + ' ' + nk[2]; }
   / KW_LIKE
   / KW_ILIKE
 
