@@ -8,6 +8,7 @@ import { parse as mariadb } from '../pegjs/mariadb.pegjs'
 import { parse as noql } from '../pegjs/noql.pegjs'
 import { parse as postgresql } from '../pegjs/postgresql.pegjs'
 import { parse as redshift } from '../pegjs/redshift.pegjs'
+import { parse as spark } from '../pegjs/spark.pegjs'
 import { parse as sqlite } from '../pegjs/sqlite.pegjs'
 import { parse as transactsql } from '../pegjs/transactsql.pegjs'
 import { parse as snowflake } from '../pegjs/snowflake.pegjs'
@@ -25,6 +26,7 @@ export default {
   postgresql,
   redshift,
   snowflake,
+  spark,
   sqlite,
   transactsql,
   trino,

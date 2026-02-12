@@ -146,6 +146,7 @@ function columnIdentifierToSql(ident) {
     case 'mysql':
     case 'mariadb':
     case 'bigquery':
+    case 'spark':
     default:
       return `\`${ident}\``
   }
@@ -160,6 +161,7 @@ function identifierToSql(ident, isDual, surround) {
   switch (database && database.toLowerCase()) {
     case 'mysql':
     case 'mariadb':
+    case 'spark':
       return `\`${ident}\``
     case 'athena':
     case 'postgresql':
