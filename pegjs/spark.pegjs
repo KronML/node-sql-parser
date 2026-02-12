@@ -1762,6 +1762,11 @@ like_op
   = nk:(KW_NOT __ KW_LIKE) { return nk[0] + ' ' + nk[2]; }
   / KW_LIKE
 
+ilike_op
+  = nk:(KW_NOT __ KW_LIKE / KW_ILIKE) { return nk[0] + ' ' + nk[2]; }
+  / KW_LIKE
+  / KW_ILIKE
+
 rlike_op
   = nk:(KW_NOT __ KW_RLIKE) { return nk[0] + ' ' + nk[2]; }
   / KW_RLIKE
@@ -2357,7 +2362,8 @@ KW_BETWEEN  = "BETWEEN"i    !ident_start { return 'BETWEEN'; }
 KW_IN       = "IN"i         !ident_start { return 'IN'; }
 KW_IS       = "IS"i         !ident_start { return 'IS'; }
 KW_LIKE     = "LIKE"i       !ident_start { return 'LIKE'; }
-KW_RLIKE     = "RLIKE"i       !ident_start { return 'RLIKE'; }
+KW_ILIKE    = "ILIKE"i      !ident_start { return 'ILIKE'; }
+KW_RLIKE    = "RLIKE"i      !ident_start { return 'RLIKE'; }
 KW_EXISTS   = "EXISTS"i     !ident_start { return 'EXISTS'; }
 
 KW_NOT      = "NOT"i        !ident_start { return 'NOT'; }
