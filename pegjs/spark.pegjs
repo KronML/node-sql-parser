@@ -47,6 +47,7 @@
     'INSERT': true,
     'INTO': true,
     'IS': true,
+    'ILIKE': true,
 
     'JOIN': true,
     'JSON': true,
