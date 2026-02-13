@@ -3,10 +3,11 @@
 
 name: Publish node-sql-parser package to GitHub Packages
 on:
-  release:
-    types: [published]
-
-  workflow_dispatch:
+  push:
+    branches:
+      - spark
+  # release:
+  #   types: [published]
 
 jobs:
   build:
