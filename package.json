@@ -3,6 +3,9 @@
   "version": "5.4.0",
   "description": "simple node sql parser",
   "main": "index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "types": "types.d.ts",
   "scripts": {
     "start": "webpack --config webpack.config.js",
