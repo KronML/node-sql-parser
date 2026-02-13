@@ -1,5 +1,5 @@
 {
-  "name": "@kronml/node-sql-parser",
+  "name": "node-sql-parser",
   "version": "5.4.0",
   "description": "simple node sql parser",
   "main": "index.js",
@@ -15,12 +15,9 @@
     "cover": "npm run cover:run && nyc report --reporter=text-lcov | coveralls",
     "release": "npm run build && npm publish output/prod"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KronML/node-sql-parser.git"
+    "url": "git+https://github.com/taozhi8833998/node-sql-parser.git"
   },
   "pre-commit": "coverLocal",
   "keywords": [
@@ -34,7 +31,7 @@
     "ast",
     "sql-ast"
   ],
-  "author": "KronML <ops@kronml.com>",
+  "author": "taozhi8833998 <taozhi8833998@163.com>",
   "files": [
     "ast/",
     "build",
@@ -50,9 +47,9 @@
   ],
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/KronML/node-sql-parser/issues"
+    "url": "https://github.com/taozhi8833998/node-sql-parser/issues"
   },
-  "homepage": "https://github.com/KronML/node-sql-parser#readme",
+  "homepage": "https://github.com/taozhi8833998/node-sql-parser#readme",
   "engines": {
     "node": ">=8"
   },
