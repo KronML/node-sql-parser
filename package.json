@@ -1,5 +1,5 @@
 {
-  "name": "@kronml/node-sql-parser",
+  "name": "@KronML/node-sql-parser",
   "version": "5.4.0",
   "description": "simple node sql parser",
   "main": "index.js",
