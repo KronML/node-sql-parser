@@ -1,11 +1,8 @@
 {
-  "name": "@KronML/node-sql-parser",
+  "name": "@kronml/node-sql-parser",
   "version": "5.4.0",
   "description": "simple node sql parser",
   "main": "index.js",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "types": "types.d.ts",
   "scripts": {
     "start": "webpack --config webpack.config.js",
@@ -17,6 +14,9 @@
     "cover:run": "cross-env NODE_ENV=coverage nyc --reporter=text-lcov npm run test",
     "cover": "npm run cover:run && nyc report --reporter=text-lcov | coveralls",
     "release": "npm run build && npm publish output/prod"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "repository": {
     "type": "git",
