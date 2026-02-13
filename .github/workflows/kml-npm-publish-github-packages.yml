@@ -17,7 +17,8 @@ jobs:
       packages: write
     steps:
       # Checkout the repository
-      - uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
       # Setup .npmrc file to publish to GitHub Packages
       - name: Setup Node.js
@@ -26,6 +27,12 @@ jobs:
           node-version: '20.x'
           registry-url: 'https://npm.pkg.github.com'
           scope: '@KronML' # Defaults to the user or organization that owns the workflow file
+
+      # Configure Git for version bumping
+      - name: Configure Git
+        run: |
+          git config --global user.email "kronml-github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "kronml-github-actions[bot]"
 
       # Bump version
       - name: Bump version
