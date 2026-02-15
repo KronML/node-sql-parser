@@ -8,7 +8,11 @@
     'AS': true,
     'ASC': true,
 
+    'ARRAY': true,
+
     'BETWEEN': true,
+    'BINARY': true,
+    'BOOLEAN': true,
     'BY': true,
 
     'CALL': true,
@@ -42,12 +46,12 @@
 
     'HAVING': true,
 
+    'ILIKE': true,
     'IN': true,
     'INNER': true,
     'INSERT': true,
     'INTO': true,
     'IS': true,
-    'ILIKE': true,
 
     'JOIN': true,
     'JSON': true,
@@ -55,6 +59,8 @@
     'KEY': true,
 
     'LATERAL': true,
+    'MAP': true,
+
     'LEFT': true,
     'LIKE': true,
     'LIMIT': true,
@@ -83,6 +89,7 @@
     'SET': true,
     'SHOW': true,
     'SORT': true,
+    'STRUCT': true,
     'SYSTEM_USER': true,
 
     'TABLE': true,
@@ -109,6 +116,16 @@
     'LOCAL': true,
     'PERSIST': true,
     'PERSIST_ONLY': true,
+  };
+
+  const DATA_TYPES = {
+    'CHAR': true, 'VARCHAR': true, 'STRING': true,
+    'INT': true, 'INTEGER': true, 'SMALLINT': true, 'TINYINT': true, 'BIGINT': true,
+    'FLOAT': true, 'DOUBLE': true, 'DECIMAL': true, 'NUMERIC': true,
+    'DATE': true, 'DATETIME': true, 'TIME': true, 'TIMESTAMP': true,
+    'BOOLEAN': true, 'BINARY': true,
+    'ARRAY': true, 'MAP': true, 'STRUCT': true,
+    'JSON': true, 'TEXT': true,
   };
 
   function getLocationObject() {
@@ -997,6 +1014,9 @@ select_stmt_nake
     g:group_by_clause?  __
     h:having_clause?    __
     o:order_by_clause?  __
+    db:distribute_by_clause? __
+    sb:sort_by_clause? __
+    cb:cluster_by_clause? __
     l:limit_clause? {
       if(f) f.forEach(info => info.table && tableList.add(`select::${info.db}::${info.table}`));
       return {
@@ -1010,6 +1030,9 @@ select_stmt_nake
           groupby: g,
           having: h,
           orderby: o,
+          distribute_by: db,
+          sort_by: sb,
+          cluster_by: cb,
           limit: l
       };
   }
@@ -1166,7 +1189,27 @@ table_ref_list
 table_ref
   = __ COMMA __ t:table_base { return t; }
   / __ t:table_join { return t; }
+  / __ t:lateral_view { return t; }
 
+lateral_view
+  = 'LATERAL'i __ 'VIEW'i __ outer:('OUTER'i __)? func:func_call __ alias:ident_name __ KW_AS __ cols:ident_name tail:(__ COMMA __ ident_name)* {
+    return {
+      type: 'lateral_view',
+      join: outer ? 'LATERAL VIEW OUTER' : 'LATERAL VIEW',
+      expr: func,
+      as: alias,
+      lateral_columns: createList(cols, tail),
+    };
+  }
+  / 'LATERAL'i __ 'VIEW'i __ outer:('OUTER'i __)? func:func_call __ alias:ident_name {
+    return {
+      type: 'lateral_view',
+      join: outer ? 'LATERAL VIEW OUTER' : 'LATERAL VIEW',
+      expr: func,
+      as: alias,
+      lateral_columns: null,
+    };
+  }
 
 table_join
   = op:join_op __ t:table_base __ KW_USING __ LPAREN __ head:ident_without_kw_type tail:(__ COMMA __ ident_without_kw_type)* __ RPAREN {
@@ -1351,6 +1394,15 @@ window_frame_value
 
 order_by_clause
   = KW_ORDER __ KW_BY __ l:order_by_list { return l; }
+
+distribute_by_clause
+  = 'DISTRIBUTE'i __ KW_BY __ e:expr_list { return e.value; }
+
+sort_by_clause
+  = 'SORT'i __ KW_BY __ l:order_by_list { return l; }
+
+cluster_by_clause
+  = 'CLUSTER'i __ KW_BY __ e:expr_list { return e.value; }
 
 partition_by_clause
   = KW_PARTITION __ KW_BY __ bc:column_clause { return bc; }
@@ -1759,7 +1811,7 @@ between_or_not_between_op
   / KW_BETWEEN
 
 like_op
-  = nk:(KW_NOT __ (KW_LIKE / KW_ILIKE)) { /* => 'LIKE' */ return nk[0] + ' ' + nk[2]; }
+  = nk:(KW_NOT __ (KW_LIKE / KW_ILIKE)) { return nk[0] + ' ' + nk[2]; }
   / KW_LIKE
   / KW_ILIKE
 
@@ -1815,6 +1867,7 @@ primary
   = cast_expr
   / literal
   / interval_expr
+  / window_func
   / aggr_func
   / func_call
   / case_expr
@@ -1954,6 +2007,58 @@ param
   = l:(':' ident_name) {
       return { type: 'param', value: l[1] };
     }
+
+window_func
+  = window_fun_rank
+  / window_fun_laglead
+  / window_fun_firstlast
+
+window_fun_rank
+  = name:KW_WIN_FNS_RANK __ LPAREN __ RPAREN __ over:over_partition {
+    return {
+      type: 'window_func',
+      name: name,
+      over: over
+    }
+  }
+
+window_fun_laglead
+  = name:KW_LAG_LEAD __ LPAREN __ l:expr_list __ RPAREN __ cn:consider_nulls_clause? __ over:over_partition {
+    return {
+      type: 'window_func',
+      name: name,
+      args: l,
+      over: over,
+      consider_nulls: cn
+    };
+  }
+
+window_fun_firstlast
+  = name:KW_FIRST_LAST_VALUE __ LPAREN __ l:expr __ RPAREN __ cn:consider_nulls_clause? __ over:over_partition {
+    return {
+      type: 'window_func',
+      name: name,
+      args: {
+        type: 'expr_list', value: [l]
+      },
+      over: over,
+      consider_nulls: cn
+    };
+  }
+
+KW_FIRST_LAST_VALUE
+  = 'FIRST_VALUE'i / 'LAST_VALUE'i
+
+KW_WIN_FNS_RANK
+  = 'ROW_NUMBER'i / 'DENSE_RANK'i / 'RANK'i / 'NTILE'i
+
+KW_LAG_LEAD
+  = 'LAG'i / 'LEAD'i / 'NTH_VALUE'i
+
+consider_nulls_clause
+  = v:('IGNORE'i / 'RESPECT'i) __ 'NULLS'i {
+    return v.toUpperCase() + ' NULLS'
+  }
 
 aggr_func
   = aggr_fun_count
@@ -2402,6 +2507,11 @@ KW_LONGTEXT  = "LONGTEXT"i  !ident_start { return 'LONGTEXT'; }
 KW_BIGINT   = "BIGINT"i   !ident_start { return 'BIGINT'; }
 KW_FLOAT   = "FLOAT"i   !ident_start { return 'FLOAT'; }
 KW_DOUBLE   = "DOUBLE"i   !ident_start { return 'DOUBLE'; }
+KW_BOOLEAN  = "BOOLEAN"i  !ident_start { return 'BOOLEAN'; }
+KW_BINARY   = "BINARY"i   !ident_start { return 'BINARY'; }
+KW_ARRAY    = "ARRAY"i    !ident_start { return 'ARRAY'; }
+KW_MAP      = "MAP"i      !ident_start { return 'MAP'; }
+KW_STRUCT   = "STRUCT"i   !ident_start { return 'STRUCT'; }
 KW_DATE     = "DATE"i     !ident_start { return 'DATE'; }
 KW_DATETIME     = "DATETIME"i     !ident_start { return 'DATETIME'; }
 KW_ROWS     = "ROWS"i     !ident_start { return 'ROWS'; }
@@ -2474,6 +2584,9 @@ RPAREN    = ')'
 
 LBRAKE    = '['
 RBRAKE    = ']'
+
+LANGLE    = '<'
+RANGLE    = '>'
 
 SEMICOLON = ';'
 
@@ -2682,12 +2795,48 @@ mem_chain
     return s;
   }
 
+data_type_list
+  = head:data_type_alias tail:(__ COMMA __ data_type_alias)* {
+    return createList(head, tail);
+  }
+
+data_type_alias
+  = n:(n:ident_name !{ return DATA_TYPES[n.toUpperCase()] === true; } { return n })? __ t:data_type {
+    return { field_name: n, field_type: t }
+  }
+
 data_type
-  = character_string_type
+  = array_type
+  / map_type
+  / struct_type
+  / character_string_type
   / numeric_type
   / datetime_type
+  / boolean_type
+  / binary_type
   / json_type
   / text_type
+
+array_type
+  = t:KW_ARRAY __ LANGLE __ a:data_type_list __ RANGLE {
+    return { dataType: t, definition: a, anglebracket: true }
+  }
+
+map_type
+  = t:KW_MAP __ LANGLE __ a:data_type_list __ RANGLE {
+    return { dataType: t, definition: a, anglebracket: true }
+  }
+
+struct_type
+  = t:KW_STRUCT __ LANGLE __ a:data_type_list __ RANGLE {
+    return { dataType: t, definition: a, anglebracket: true }
+  }
+
+boolean_type
+  = t:KW_BOOLEAN { return { dataType: t }; }
+
+binary_type
+  = t:KW_BINARY { return { dataType: t }; }
 
 character_string_type
   = t:(KW_CHAR / KW_VARCHAR) __ LPAREN __ l:[0-9]+ __ RPAREN {

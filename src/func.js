@@ -1,7 +1,7 @@
 import { arrayIndexToSQL, columnOffsetToSQL } from './column'
 import { collateToSQL } from './collate'
 import { exprToSQL, orderOrPartitionByToSQL } from './expr'
-import { hasVal, identifierToSql, literalToSQL, toUpper } from './util'
+import { arrayStructTypeToSQL, hasVal, identifierToSql, literalToSQL, toUpper } from './util'
 import { overToSQL } from './over'
 
 function anyValueFuncToSQL(stmt) {
@@ -34,7 +34,7 @@ function castToSQL(expr) {
   const result = []
   for (let i = 0, len = targets.length; i < len; ++i) {
     const target = targets[i]
-    const { angle_brackets: angleBrackets, length, dataType, parentheses, quoted, scale, suffix: dataTypeSuffix, expr: targetExpr } = target
+    const { angle_brackets: angleBrackets, length, dataType, definition, parentheses, quoted, scale, suffix: dataTypeSuffix, expr: targetExpr } = target
     let str = targetExpr ? exprToSQL(targetExpr) : ''
     if (length != null) str = scale ? `${length}, ${scale}` : length
     if (parentheses) str = `(${str})`
@@ -50,7 +50,8 @@ function castToSQL(expr) {
     }
     if (i === 0) targetResult.push(prefix)
     const arrayDimension = arrayDimensionToSymbol(target)
-    targetResult.push(symbolChar, quoted, dataType, quoted, arrayDimension, str, suffix)
+    const dataTypeStr = definition ? arrayStructTypeToSQL(target) : dataType
+    targetResult.push(symbolChar, quoted, dataTypeStr, quoted, arrayDimension, str, suffix)
     result.push(targetResult.filter(hasVal).join(''))
   }
   const collateStr = collateToSQL(collate)

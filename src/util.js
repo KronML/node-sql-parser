@@ -307,7 +307,7 @@ function arrayStructTypeToSQL(expr) {
   if (!expr) return
   const { dataType, definition, anglebracket } = expr
   const dataTypeUpper = toUpper(dataType)
-  const isNotArrayOrStruct = dataTypeUpper !== 'ARRAY' && dataTypeUpper !== 'STRUCT'
+  const isNotArrayOrStruct = dataTypeUpper !== 'ARRAY' && dataTypeUpper !== 'STRUCT' && dataTypeUpper !== 'MAP'
   if (isNotArrayOrStruct) return dataTypeUpper
   const result = definition && definition.map(field => {
     const {
