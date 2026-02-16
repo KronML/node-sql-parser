@@ -6,6 +6,9 @@ on:
   push:
     branches:
       - spark
+
+  workflow_dispatch:
+
   # release:
   #   types: [published]
 
