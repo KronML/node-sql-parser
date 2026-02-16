@@ -13,7 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
       packages: write
+      attestations: write
     steps:
       # Checkout the repository
       - name: Checkout repository
@@ -23,28 +25,20 @@ jobs:
       - name: Set build type
         run: echo "BUILD_TYPE=$(if [ '${{ github.ref }}' != 'refs/heads/master' ]; then echo 'dev'; else echo 'prod'; fi)" >> $GITHUB_ENV
 
-      # Setup .npmrc file to publish to GitHub Packages
+      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@KronML' # Defaults to the user or organization that owns the workflow file
 
-      # Configure Git for version bumping
-      - name: Configure Git
-        run: |
-          git config --global user.email "kronml-github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "kronml-github-actions[bot]"
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install
 
-      # Bump version
-      - name: Bump version
-        run: |
-          if [ "$BUILD_TYPE" = "dev" ]; then
-            npm version prerelease --preid=dev -m "Bump version to %s [skip ci]"
-          else
-            npm version patch -m "Bump version to %s [skip ci]"
-          fi
+      # Run tests
+      - name: Run tests
+        run: npm test
 
   # Publish to npm only for prod builds, publish to GitHub Packages for both dev and prod builds
   publish-npm:
@@ -52,18 +46,26 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # Setup Node.js
       - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           registry-url: https://registry.npmjs.org/
-          org: '@kronml'
 
-      - run: npm install
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install
 
-      - run: npm run build
+      # Build package
+      - name: Build package
+        run: npm run build
 
-      - run: cd output/prod && npm publish
+      # Publish to npm
+      - name: Publish to npm
+        run: cd output/prod && npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.PUBLISH_NPM_TOKEN }}
 
@@ -71,15 +73,36 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v4
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          registry-url: https://npm.pkg.github.com/
+          registry-url: https://registry.npmjs.org/
           scope: '@kronml'
 
-      # Publish package to GitHub Packages
-      - name: Publish package to GitHub Packages
-        run: npm publish
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Update package.json name to include scope
+      - name: Update package.json name
+        run: sed -i '2,2s/node-sql-parser/@kronml\/node-sql-parser/g' package.json
+
+      # Setup .npmrc for GitHub Packages
+      - name: Setup .npmrc
+        run: echo registry=https://npm.pkg.github.com/KronML >> .npmrc
+
+      # Build package
+      - name: Build package
+        run: npm run build
+
+      # Publish to GitHub Packages
+      - name: Publish to GitHub Packages
+        run: cd output/prod && npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
