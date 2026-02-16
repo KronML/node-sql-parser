@@ -14,7 +14,7 @@ import { collateToSQL } from './collate'
 // }
 
 const DEFAULT_OPT = {
-  database     : (typeof PARSER_NAME === 'undefined') ? 'mysql' : PARSER_NAME,
+  database     : PARSER_NAME || 'mysql',
   type         : 'table',
   trimQuery    : true,
   parseOptions : {
@@ -164,7 +164,6 @@ function identifierToSql(ident, isDual, surround) {
       return `\`${ident}\``
     case 'athena':
     case 'postgresql':
-    case 'spark':
     case 'redshift':
     case 'snowflake':
     case 'trino':
@@ -174,6 +173,7 @@ function identifierToSql(ident, isDual, surround) {
     case 'transactsql':
       return `[${ident}]`
     case 'bigquery':
+    case 'spark':
     case 'db2':
       return ident
     default:
