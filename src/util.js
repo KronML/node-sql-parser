@@ -161,7 +161,6 @@ function identifierToSql(ident, isDual, surround) {
   switch (database && database.toLowerCase()) {
     case 'mysql':
     case 'mariadb':
-    case 'spark':
       return `\`${ident}\``
     case 'athena':
     case 'postgresql':
@@ -174,6 +173,7 @@ function identifierToSql(ident, isDual, surround) {
     case 'transactsql':
       return `[${ident}]`
     case 'bigquery':
+    case 'spark':
     case 'db2':
       return ident
     default:
