@@ -14,7 +14,7 @@ import { collateToSQL } from './collate'
 // }
 
 const DEFAULT_OPT = {
-  database     : PARSER_NAME || 'mysql',
+  database     : (typeof PARSER_NAME === 'undefined') ? 'mysql' : PARSER_NAME,
   type         : 'table',
   trimQuery    : true,
   parseOptions : {
@@ -161,10 +161,10 @@ function identifierToSql(ident, isDual, surround) {
   switch (database && database.toLowerCase()) {
     case 'mysql':
     case 'mariadb':
-    case 'spark':
       return `\`${ident}\``
     case 'athena':
     case 'postgresql':
+    case 'spark':
     case 'redshift':
     case 'snowflake':
     case 'trino':

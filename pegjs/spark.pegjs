@@ -1258,6 +1258,7 @@ table_base
       } else {
         return {
           db: t.db,
+          schema: t.schema,
           table: t.table,
           as: alias
         };
