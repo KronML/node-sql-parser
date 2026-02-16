@@ -781,7 +781,7 @@ reference_definition
   ou:on_reference? {
     return {
         definition: de,
-        table: t,
+        table: [t],
         keyword: kc.toLowerCase(),
         match: m && m.toLowerCase(),
         on_action: [od, ou].filter(v => v)
@@ -986,28 +986,40 @@ select_stmt
 
 with_clause
   = KW_WITH __ head:cte_definition tail:(__ COMMA __ cte_definition)* {
+      // => cte_definition[]
       return createList(head, tail);
     }
   / __ KW_WITH __ KW_RECURSIVE __ cte:cte_definition tail:(__ COMMA __ cte_definition)* {
+    // => (cte_definition & { recursive?: true; })[]
       cte.recursive = true;
       return createList(cte, tail);
     }
 
 cte_definition
-  = name:(literal_string / ident_name) __ columns:cte_column_definition? __ KW_AS __ LPAREN __ stmt:union_stmt __ RPAREN {
+  = name:(literal_string / ident_name) __ columns:cte_column_definition? __ KW_AS __ LPAREN __ stmt:crud_stmt __ RPAREN {
+    // => { name: { type: 'default'; value: string; }; stmt: crud_stmt; columns?: cte_column_definition; }
     if (typeof name === 'string') name = { type: 'default', value: name }
-    return { name, stmt, columns };
-  }
+      return { name, stmt: stmt.ast, columns };
+    }
 
 cte_column_definition
   = LPAREN __ l:column_ref_list __ RPAREN {
+    // => column_ref_list
       return l
     }
+
+distinct_on
+  = d:KW_DISTINCT? {
+    // => { type: string | undefined; }
+    return {
+      type: d,
+    }
+  }
 
 select_stmt_nake
   = __ cte:with_clause? __ KW_SELECT ___
     opts:option_clause? __
-    d:KW_DISTINCT?      __
+    d:distinct_on?      __
     c:column_clause     __
     f:from_clause?      __
     w:where_clause?     __
@@ -1023,7 +1035,7 @@ select_stmt_nake
           with: cte,
           type: 'select',
           options: opts,
-          distinct: d,
+          distinct: d && d.type,
           columns: c,
           from: f,
           where: w,
@@ -1269,11 +1281,17 @@ join_op
   / KW_CROSS __ KW_JOIN { return 'CROSS JOIN'; }
 
 table_name
-  = dt:ident tail:(__ DOT __ ident)? {
-      const obj = { db: null, table: dt };
+  = dt:ident schema:(__ DOT __ ident)? tail:(__ DOT __ ident)? {
+      const obj = { db: null, schema: null, table: dt };
       if (tail !== null) {
         obj.db = dt;
+        obj.schema = schema[3];
         obj.table = tail[3];
+        return obj
+      }
+      if (schema !== null) {
+        obj.db = dt;
+        obj.table = schema[3];
       }
       return obj;
     }
