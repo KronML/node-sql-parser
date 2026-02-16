@@ -45,35 +45,36 @@ jobs:
         run: npm test
 
   # Publish to npm only for prod builds, publish to GitHub Packages for both dev and prod builds
-  publish-npm:
-    if: needs.build.outputs.BUILD_TYPE == 'prod'
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
+  # publish-npm:
+  #   if: needs.build.outputs.BUILD_TYPE == 'prod'
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v5
 
-      # Setup Node.js
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-          registry-url: https://registry.npmjs.org/
-          scope: '@kronml'
+  #     # Setup Node.js
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20.x'
+  #         registry-url: https://registry.npmjs.org/
+  #         scope: '@kronml'
 
-      # Install dependencies
-      - name: Install dependencies
-        run: npm install
+  #     # Install dependencies
+  #     - name: Install dependencies
+  #       run: npm install
 
-      # Build package
-      - name: Build package
-        run: npm run build
+  #     # Build package
+  #     - name: Build package
+  #       run: npm run build
 
-      # Publish to npm
-      - name: Publish to npm
-        run: cd output/prod && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.PUBLISH_NPM_TOKEN }}
+  #     # Publish to npm
+  #     - name: Publish to npm
+  #       run: cd output/prod && npm publish --access public
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.PUBLISH_NPM_TOKEN }}
 
+  # Publish to GitHub Packages for both dev and prod builds
   publish-gpr:
     needs: build
     runs-on: ubuntu-latest
