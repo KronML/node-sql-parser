@@ -105,4 +105,4 @@ jobs:
       - name: Publish to GitHub Packages
         run: cd output/prod && npm publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.KMLOPS_PAT }}
