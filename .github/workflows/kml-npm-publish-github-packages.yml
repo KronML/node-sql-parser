@@ -91,10 +91,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Update package.json name to include scope
-      - name: Update package.json name
-        run: sed -i '2,2s/node-sql-parser/@kronml\/node-sql-parser/g' package.json
-
       # Setup .npmrc for GitHub Packages
       - name: Setup .npmrc
         run: echo registry=https://npm.pkg.github.com/KronML >> .npmrc
