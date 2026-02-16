@@ -5,6 +5,8 @@ name: Publish node-sql-parser package to GitHub Packages
 on:
   push:
 
+  workflow_dispatch:
+
   # release:
   #   types: [published]
 
@@ -42,7 +44,7 @@ jobs:
 
   # Publish to npm only for prod builds, publish to GitHub Packages for both dev and prod builds
   publish-npm:
-    if: needs.build.outputs.BUILD_TYPE == 'prod'
+    # if: needs.build.outputs.BUILD_TYPE == 'prod'
     needs: build
     runs-on: ubuntu-latest
     steps:
