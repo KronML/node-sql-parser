@@ -57,9 +57,11 @@ function forXmlToSQL(stmt) {
 function selectToSQL(stmt) {
   const {
     as_struct_val: asStructVal,
+    cluster_by,
     columns,
     collate,
     distinct,
+    distribute_by,
     for: forXml,
     from,
     for_sys_time_as_of: forSystem = {},
@@ -73,6 +75,7 @@ function selectToSQL(stmt) {
     orderby,
     parentheses_symbol: parentheses,
     qualify,
+    sort_by,
     top,
     window: windowInfo,
     with: withInfo,
@@ -99,6 +102,9 @@ function selectToSQL(stmt) {
   clauses.push(commonOptionConnector('QUALIFY', exprToSQL, qualify))
   clauses.push(commonOptionConnector('WINDOW', exprToSQL, windowInfo))
   clauses.push(orderOrPartitionByToSQL(orderby, 'order by'))
+  if (distribute_by) clauses.push(connector('DISTRIBUTE BY', getExprListSQL(distribute_by).join(', ')))
+  if (sort_by) clauses.push(orderOrPartitionByToSQL(sort_by, 'sort by'))
+  if (cluster_by) clauses.push(connector('CLUSTER BY', getExprListSQL(cluster_by).join(', ')))
   clauses.push(collateToSQL(collate))
   clauses.push(limitToSQL(limit))
   if (isolation) clauses.push(commonOptionConnector(isolation.keyword, literalToSQL, isolation.expr))

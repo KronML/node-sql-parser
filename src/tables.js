@@ -112,8 +112,20 @@ function generateVirtualTable(stmt) {
   return `${toUpper(keyword)}(${toUpper(type)}(${generatorSQL}))`
 }
 
+function lateralViewToSQL(tableInfo) {
+  const { expr, as: alias, lateral_columns } = tableInfo
+  const funcSQL = exprToSQL(expr)
+  const aliasSQL = identifierToSql(alias)
+  const result = [funcSQL, aliasSQL]
+  if (lateral_columns) {
+    result.push(`AS ${lateral_columns.map(col => identifierToSql(col)).join(', ')}`)
+  }
+  return result.filter(hasVal).join(' ')
+}
+
 function tableToSQL(tableInfo) {
   if (toUpper(tableInfo.type) === 'UNNEST') return unnestToSQL(tableInfo)
+  if (tableInfo.type === 'lateral_view') return lateralViewToSQL(tableInfo)
   const { table, db, as, expr, operator, prefix: prefixStr, schema, server, suffix, tablesample, temporal_table, table_hint, surround = {} } = tableInfo
   const serverName = identifierToSql(server, false, surround.server)
   const database = identifierToSql(db, false, surround.db)

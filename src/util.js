@@ -146,6 +146,7 @@ function columnIdentifierToSql(ident) {
     case 'mysql':
     case 'mariadb':
     case 'bigquery':
+    case 'spark':
     default:
       return `\`${ident}\``
   }
@@ -172,6 +173,7 @@ function identifierToSql(ident, isDual, surround) {
     case 'transactsql':
       return `[${ident}]`
     case 'bigquery':
+    case 'spark':
     case 'db2':
       return ident
     default:
@@ -305,7 +307,7 @@ function arrayStructTypeToSQL(expr) {
   if (!expr) return
   const { dataType, definition, anglebracket } = expr
   const dataTypeUpper = toUpper(dataType)
-  const isNotArrayOrStruct = dataTypeUpper !== 'ARRAY' && dataTypeUpper !== 'STRUCT'
+  const isNotArrayOrStruct = dataTypeUpper !== 'ARRAY' && dataTypeUpper !== 'STRUCT' && dataTypeUpper !== 'MAP'
   if (isNotArrayOrStruct) return dataTypeUpper
   const result = definition && definition.map(field => {
     const {
