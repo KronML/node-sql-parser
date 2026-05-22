@@ -1914,21 +1914,21 @@ unary_operator
   = '!' / '-' / '+' / '~'
 
 column_ref
-  = tbl:ident __ DOT __ col:column ce:(__ collate_expr)? {
-      columnList.add(`select::${tbl}::${col}`);
+  = tbl:ident __ DOT __ col:column_without_kw_type ce:(__ collate_expr)? {
+      columnList.add(`select::${tbl}::${col.value}`);
       return {
         type: 'column_ref',
         table: tbl,
-        column: col,
+        column: { expr: col },
         collate: ce && ce[1],
       };
     }
-  / col:column ce:(__ collate_expr)? {
-      columnList.add(`select::null::${col}`);
+  / col:column_type ce:(__ collate_expr)? {
+      columnList.add(`select::null::${col.value}`);
       return {
         type: 'column_ref',
         table: null,
-        column: col,
+        column: { expr: col },
         collate: ce && ce[1],
       };
     }
@@ -2008,6 +2008,18 @@ column_without_kw
 column
   = name:column_name !{ return reservedMap[name.toUpperCase()] === true; } { return name; }
   / quoted_ident
+
+column_type
+  = name:column_name !{ return reservedMap[name.toUpperCase()] === true; } {
+      return { type: 'default', value: name }
+    }
+  / quoted_ident_type
+
+column_without_kw_type
+  = n:column_name {
+      return { type: 'default', value: n }
+    }
+  / quoted_ident_type
 
 column_name
   =  start:ident_part parts:column_part* { return start + parts.join(''); }
