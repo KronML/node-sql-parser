@@ -351,4 +351,16 @@ describe('Spark', () => {
     const result = parser.sqlify(ast, option);
     expect(result).to.not.be.undefined;
   })
+
+  // Locks in the column_ref AST shape so downstream consumers
+  // (validation / query optimization) can read the column name uniformly
+  // as `expr.column.expr.value`, matching the postgres dialect.
+  it('column_ref wraps the column name in { expr: { type, value } }', () => {
+    const ast = parser.astify('SELECT col1, t.col2, `col with space` FROM t', option);
+    expect(ast.columns[0].expr.column).to.deep.equal({ expr: { type: 'default', value: 'col1' } });
+    expect(ast.columns[1].expr.column).to.deep.equal({ expr: { type: 'default', value: 'col2' } });
+    expect(ast.columns[1].expr.table).to.equal('t');
+    expect(ast.columns[2].expr.column).to.deep.equal({ expr: { type: 'backticks_quote_string', value: 'col with space' } });
+    expect(parser.sqlify(parser.astify('SELECT * FROM t', option), option)).to.equal('SELECT * FROM t');
+  })
 })
