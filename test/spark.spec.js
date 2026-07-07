@@ -363,4 +363,29 @@ describe('Spark', () => {
     expect(ast.columns[2].expr.column).to.deep.equal({ expr: { type: 'backticks_quote_string', value: 'col with space' } });
     expect(parser.sqlify(parser.astify('SELECT * FROM t', option), option)).to.equal('SELECT * FROM t');
   })
+
+  // --- RANGE window frames with INTERVAL bounds ---
+  // Spark (and DuckDB) support value-based RANGE frames where the bound is an
+  // INTERVAL over a single date/timestamp ORDER BY key. These round-trip through
+  // the parser so generated rolling-window queries can be re-emitted unchanged.
+
+  it('should support RANGE BETWEEN INTERVAL n DAYS PRECEDING AND CURRENT ROW', () => {
+    const sql = 'SELECT SUM(x) OVER (PARTITION BY a ORDER BY CAST(d AS TIMESTAMP) RANGE BETWEEN INTERVAL 29 DAYS PRECEDING AND CURRENT ROW) FROM t'
+    expect(getParsedSql(sql)).to.be.equal('SELECT SUM(x) OVER (PARTITION BY a ORDER BY CAST(d AS TIMESTAMP) ASC RANGE BETWEEN INTERVAL 29 DAYS PRECEDING AND CURRENT ROW) FROM t')
+  })
+
+  it('should support RANGE BETWEEN INTERVAL n HOURS PRECEDING AND CURRENT ROW', () => {
+    const sql = 'SELECT AVG(v) OVER (PARTITION BY a ORDER BY ts RANGE BETWEEN INTERVAL 24 HOURS PRECEDING AND CURRENT ROW) FROM t'
+    expect(getParsedSql(sql)).to.be.equal('SELECT AVG(v) OVER (PARTITION BY a ORDER BY ts ASC RANGE BETWEEN INTERVAL 24 HOURS PRECEDING AND CURRENT ROW) FROM t')
+  })
+
+  it('should support RANGE with INTERVAL PRECEDING and INTERVAL FOLLOWING bounds', () => {
+    const sql = 'SELECT SUM(x) OVER (ORDER BY ts RANGE BETWEEN INTERVAL 1 DAY PRECEDING AND INTERVAL 2 DAYS FOLLOWING) FROM t'
+    expect(getParsedSql(sql)).to.be.equal('SELECT SUM(x) OVER (ORDER BY ts ASC RANGE BETWEEN INTERVAL 1 DAY PRECEDING AND INTERVAL 2 DAYS FOLLOWING) FROM t')
+  })
+
+  it('should accept plural INTERVAL units in a plain expression', () => {
+    const sql = 'SELECT ts + INTERVAL 3 DAYS FROM t'
+    expect(getParsedSql(sql)).to.be.equal('SELECT ts + INTERVAL 3 DAYS FROM t')
+  })
 })
