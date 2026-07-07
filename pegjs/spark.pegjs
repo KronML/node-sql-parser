@@ -1383,6 +1383,26 @@ window_frame_clause
     }
     return createBinaryExpr(op, left, right)
   }
+  / 'RANGE'i __ op:KW_BETWEEN __ p:window_frame_interval __ KW_AND __ f:(window_frame_interval / window_frame_current_row) {
+    const left = {
+      type: 'origin',
+      value: 'range',
+    }
+    const right = {
+      type: 'expr_list',
+      value: [p, f]
+    }
+    return createBinaryExpr(op, left, right)
+  }
+
+window_frame_interval
+  = i:interval_expr __ k:('PRECEDING'i / 'FOLLOWING'i) {
+    i.suffix = {
+      type: 'origin',
+      value: k.toLowerCase(),
+    }
+    return i
+  }
 
 window_frame_following
   = s:window_frame_value __ 'FOLLOWING'i  {
@@ -2659,12 +2679,11 @@ keyword_comment
 char = .
 
 interval_unit
-  = KW_UNIT_YEAR
-  / KW_UNIT_MONTH
-  / KW_UNIT_DAY
-  / KW_UNIT_HOUR
-  / KW_UNIT_MINUTE
-  / KW_UNIT_SECOND
+  // Spark accepts both singular and plural unit names (DAY / DAYS, HOUR / HOURS).
+  // Preserve the matched form so the value round-trips exactly.
+  = u:('YEAR'i / 'MONTH'i / 'DAY'i / 'HOUR'i / 'MINUTE'i / 'SECOND'i) s:'S'i? !ident_start {
+    return `${u}${s || ''}`
+  }
 
 whitespace =
   [ \t\n\r]

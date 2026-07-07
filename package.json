@@ -1,6 +1,6 @@
 {
   "name": "@kronml/node-sql-parser",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "simple node sql parser",
   "main": "index.js",
   "types": "types.d.ts",
