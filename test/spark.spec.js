@@ -499,4 +499,10 @@ describe('Spark', () => {
   it('should still allow MINUS as an identifier', () => {
     expect(getParsedSql('SELECT minus FROM t')).to.be.equal('SELECT minus FROM t')
   })
+
+  it('should support LONG as a cast target', () => {
+    expect(getParsedSql('SELECT CAST(event_time AS LONG) AS x FROM t')).to.be.equal('SELECT CAST(event_time AS LONG) AS x FROM t')
+    expect(getParsedSql('SELECT TRY_CAST(event_time AS LONG) AS x FROM t')).to.be.equal('SELECT TRY_CAST(event_time AS LONG) AS x FROM t')
+    expect(getParsedSql('SELECT CAST(a AS BIGINT) AS x FROM t')).to.be.equal('SELECT CAST(a AS BIGINT) AS x FROM t')
+  })
 })
