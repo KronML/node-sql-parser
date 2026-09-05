@@ -388,4 +388,115 @@ describe('Spark', () => {
     const sql = 'SELECT ts + INTERVAL 3 DAYS FROM t'
     expect(getParsedSql(sql)).to.be.equal('SELECT ts + INTERVAL 3 DAYS FROM t')
   })
+
+  // --- IS [NOT] DISTINCT FROM ---
+  // Null-safe equality. The right operand is a full expression, so literals,
+  // qualified column refs and subqueries are all accepted.
+
+  it('should support IS DISTINCT FROM between qualified columns', () => {
+    const sql = 'SELECT v.cameraID FROM video v WHERE v.objectType IS DISTINCT FROM v.eventType'
+    expect(getParsedSql(sql)).to.be.equal('SELECT v.cameraID FROM video AS v WHERE v.objectType IS DISTINCT FROM v.eventType')
+  })
+
+  it('should support IS NOT DISTINCT FROM', () => {
+    const sql = 'SELECT a FROM t WHERE a IS NOT DISTINCT FROM b'
+    expect(getParsedSql(sql)).to.be.equal('SELECT a FROM t WHERE a IS NOT DISTINCT FROM b')
+  })
+
+  it('should support IS DISTINCT FROM with literal operands', () => {
+    expect(getParsedSql("SELECT a FROM t WHERE a IS DISTINCT FROM NULL")).to.be.equal("SELECT a FROM t WHERE a IS DISTINCT FROM NULL")
+    expect(getParsedSql("SELECT a FROM t WHERE a IS DISTINCT FROM TRUE")).to.be.equal("SELECT a FROM t WHERE a IS DISTINCT FROM TRUE")
+    expect(getParsedSql("SELECT a FROM t WHERE a IS DISTINCT FROM 'x'")).to.be.equal("SELECT a FROM t WHERE a IS DISTINCT FROM 'x'")
+  })
+
+  it('should support IS DISTINCT FROM with a subquery operand', () => {
+    const sql = 'SELECT a FROM t WHERE a IS DISTINCT FROM (SELECT MAX(b) FROM u)'
+    expect(getParsedSql(sql)).to.be.equal('SELECT a FROM t WHERE a IS DISTINCT FROM (SELECT MAX(b) FROM u)')
+  })
+
+  it('should bind IS DISTINCT FROM tighter than AND / OR', () => {
+    const ast = parser.astify('SELECT a FROM t WHERE a IS DISTINCT FROM b AND c IS NULL', option)
+    expect(ast.where.operator).to.be.equal('AND')
+    expect(ast.where.left.operator).to.be.equal('IS DISTINCT FROM')
+    expect(getParsedSql('SELECT a FROM t WHERE x = 1 AND a IS NOT DISTINCT FROM b OR y = 2'))
+      .to.be.equal('SELECT a FROM t WHERE x = 1 AND a IS NOT DISTINCT FROM b OR y = 2')
+  })
+
+  it('should keep SELECT DISTINCT and IS [NOT] NULL working', () => {
+    expect(getParsedSql('SELECT DISTINCT a FROM t')).to.be.equal('SELECT DISTINCT a FROM t')
+    expect(getParsedSql('SELECT a FROM t WHERE a IS NOT NULL AND b IS NULL')).to.be.equal('SELECT a FROM t WHERE a IS NOT NULL AND b IS NULL')
+  })
+
+  // --- EXCEPT / INTERSECT set operators ---
+
+  it('should support EXCEPT and INTERSECT', () => {
+    expect(getParsedSql('SELECT a FROM t EXCEPT SELECT a FROM u')).to.be.equal('SELECT a FROM t EXCEPT SELECT a FROM u')
+    expect(getParsedSql('SELECT a FROM t INTERSECT SELECT a FROM u')).to.be.equal('SELECT a FROM t INTERSECT SELECT a FROM u')
+  })
+
+  it('should support the ALL form of EXCEPT and INTERSECT', () => {
+    expect(getParsedSql('SELECT a FROM t EXCEPT ALL SELECT a FROM u')).to.be.equal('SELECT a FROM t EXCEPT ALL SELECT a FROM u')
+    expect(getParsedSql('SELECT a FROM t INTERSECT ALL SELECT a FROM u')).to.be.equal('SELECT a FROM t INTERSECT ALL SELECT a FROM u')
+  })
+
+  it('should support set operators chained with UNION', () => {
+    const sql = 'SELECT a FROM t UNION SELECT a FROM u EXCEPT SELECT a FROM v'
+    expect(getParsedSql(sql)).to.be.equal(sql)
+  })
+
+  // --- REGEXP (alias of RLIKE) ---
+
+  it('should support REGEXP and NOT REGEXP', () => {
+    expect(getParsedSql("SELECT a FROM t WHERE s REGEXP '^x'")).to.be.equal("SELECT a FROM t WHERE s REGEXP '^x'")
+    expect(getParsedSql("SELECT a FROM t WHERE s NOT REGEXP '^x'")).to.be.equal("SELECT a FROM t WHERE s NOT REGEXP '^x'")
+    expect(getParsedSql("SELECT a FROM t WHERE s RLIKE '^x'")).to.be.equal("SELECT a FROM t WHERE s RLIKE '^x'")
+  })
+
+  // --- DIV integer division ---
+
+  it('should support DIV at multiplicative precedence', () => {
+    expect(getParsedSql('SELECT a DIV b FROM t')).to.be.equal('SELECT a DIV b FROM t')
+    const ast = parser.astify('SELECT a + b DIV c FROM t', option)
+    expect(ast.columns[0].expr.operator).to.be.equal('+')
+    expect(ast.columns[0].expr.right.operator).to.be.equal('DIV')
+  })
+
+  // --- TRY_CAST ---
+
+  it('should support TRY_CAST', () => {
+    expect(getParsedSql('SELECT TRY_CAST(a AS INT) FROM t')).to.be.equal('SELECT TRY_CAST(a AS INT) FROM t')
+    expect(getParsedSql('SELECT TRY_CAST(a AS DECIMAL(10, 2)) FROM t')).to.be.equal('SELECT TRY_CAST(a AS DECIMAL(10, 2)) FROM t')
+    expect(getParsedSql('SELECT CAST(a AS INT) FROM t')).to.be.equal('SELECT CAST(a AS INT) FROM t')
+  })
+
+  // --- Bitwise operators ---
+  // Spark precedence: * / % DIV  >  + -  >  &  >  ^  >  |
+
+  it('should support bitwise AND, OR and XOR', () => {
+    expect(getParsedSql('SELECT a & b FROM t')).to.be.equal('SELECT a & b FROM t')
+    expect(getParsedSql('SELECT a | b FROM t')).to.be.equal('SELECT a | b FROM t')
+    expect(getParsedSql('SELECT a ^ b FROM t')).to.be.equal('SELECT a ^ b FROM t')
+  })
+
+  it('should bind bitwise operators at Spark precedence', () => {
+    const top = sql => parser.astify(sql, option).columns[0].expr
+    // + binds tighter than &
+    expect(top('SELECT a + b & c FROM t').operator).to.be.equal('&')
+    expect(top('SELECT a & b + c FROM t').right.operator).to.be.equal('+')
+    // & tighter than ^, ^ tighter than |
+    expect(top('SELECT a | b & c FROM t').operator).to.be.equal('|')
+    expect(top('SELECT a ^ b & c FROM t').right.operator).to.be.equal('&')
+    expect(top('SELECT a | b ^ c FROM t').right.operator).to.be.equal('^')
+    // bitwise tighter than comparison
+    expect(parser.astify('SELECT a FROM t WHERE a & 1 = 1', option).where.left.operator).to.be.equal('&')
+  })
+
+  it('should not confuse | with || or & with &&', () => {
+    expect(getParsedSql('SELECT a || b FROM t')).to.be.equal('SELECT a || b FROM t')
+    expect(getParsedSql('SELECT a FROM t WHERE x && y')).to.be.equal('SELECT a FROM t WHERE x && y')
+  })
+
+  it('should still allow MINUS as an identifier', () => {
+    expect(getParsedSql('SELECT minus FROM t')).to.be.equal('SELECT minus FROM t')
+  })
 })

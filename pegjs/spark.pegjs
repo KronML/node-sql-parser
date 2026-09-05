@@ -35,6 +35,7 @@
 
     'ELSE': true,
     'END': true,
+    'EXCEPT': true,
     'EXISTS': true,
     'EXPLAIN': true,
 
@@ -50,6 +51,7 @@
     'IN': true,
     'INNER': true,
     'INSERT': true,
+    'INTERSECT': true,
     'INTO': true,
     'IS': true,
 
@@ -284,6 +286,12 @@ multiple_stmt
 set_op
   = KW_UNION __ s:(KW_ALL / KW_DISTINCT)? {
     return s ? `union ${s.toLowerCase()}` : 'union'
+  }
+  / KW_INTERSECT __ s:(KW_ALL / KW_DISTINCT)? {
+    return s ? `intersect ${s.toLowerCase()}` : 'intersect'
+  }
+  / KW_EXCEPT __ s:(KW_ALL / KW_DISTINCT)? {
+    return s ? `except ${s.toLowerCase()}` : 'except'
   }
 
 union_stmt
@@ -1814,6 +1822,7 @@ comparison_op_right
   = arithmetic_op_right
   / in_op_right
   / between_op_right
+  / distinct_from_op_right
   / is_op_right
   / like_op_right
   / rlike_op_right
@@ -1849,14 +1858,24 @@ between_or_not_between_op
   = nk:(KW_NOT __ KW_BETWEEN) { return nk[0] + ' ' + nk[2]; }
   / KW_BETWEEN
 
+distinct_from_op
+  = KW_IS __ KW_NOT __ KW_DISTINCT __ KW_FROM { return 'IS NOT DISTINCT FROM'; }
+  / KW_IS __ KW_DISTINCT __ KW_FROM { return 'IS DISTINCT FROM'; }
+
+distinct_from_op_right
+  = op:distinct_from_op __ right:(expr) {
+      return { op: op, right: right };
+    }
+
 like_op
   = nk:(KW_NOT __ (KW_LIKE / KW_ILIKE)) { return nk[0] + ' ' + nk[2]; }
   / KW_LIKE
   / KW_ILIKE
 
 rlike_op
-  = nk:(KW_NOT __ KW_RLIKE) { return nk[0] + ' ' + nk[2]; }
+  = nk:(KW_NOT __ (KW_RLIKE / KW_REGEXP)) { return nk[0] + ' ' + nk[2]; }
   / KW_RLIKE
+  / KW_REGEXP
 
 in_op
   = nk:(KW_NOT __ KW_IN) { return nk[0] + ' ' + nk[2]; }
@@ -1881,6 +1900,36 @@ in_op_right
     }
 
 additive_expr
+  = bitwise_or_expr
+
+bitwise_or_expr
+  = head:bitwise_xor_expr
+    tail:(__ bitwise_or_operator __ bitwise_xor_expr)* {
+      return createBinaryExprChain(head, tail);
+    }
+
+bitwise_xor_expr
+  = head:bitwise_and_expr
+    tail:(__ bitwise_xor_operator __ bitwise_and_expr)* {
+      return createBinaryExprChain(head, tail);
+    }
+
+bitwise_and_expr
+  = head:arithmetic_additive_expr
+    tail:(__ bitwise_and_operator __ arithmetic_additive_expr)* {
+      return createBinaryExprChain(head, tail);
+    }
+
+bitwise_or_operator
+  = "|" !"|" { return '|'; }
+
+bitwise_xor_operator
+  = "^"
+
+bitwise_and_operator
+  = "&" !"&" { return '&'; }
+
+arithmetic_additive_expr
   = head:multiplicative_expr
     tail:(__ additive_operator  __ multiplicative_expr)* {
       if (tail && tail.length && head.type === 'column_ref' && head.column === '*') throw new Error(JSON.stringify({
@@ -1900,7 +1949,7 @@ multiplicative_expr
     }
 
 multiplicative_operator
-  = "*" / "/" / "%"
+  = "*" / "/" / "%" / KW_DIV
 
 primary
   = cast_expr
@@ -2244,7 +2293,7 @@ scalar_func
   / KW_SYSTEM_USER
 
 cast_expr
-  = c:KW_CAST __ LPAREN __ e:expr __ KW_AS __ t:data_type __ RPAREN {
+  = c:(KW_CAST / KW_TRY_CAST) __ LPAREN __ e:expr __ KW_AS __ t:data_type __ RPAREN {
     return {
       type: 'cast',
       keyword: c.toLowerCase(),
@@ -2253,7 +2302,7 @@ cast_expr
       target: [t]
     };
   }
-  / c:KW_CAST __ LPAREN __ e:expr __ KW_AS __ KW_DECIMAL __ LPAREN __ precision:int __ RPAREN __ RPAREN {
+  / c:(KW_CAST / KW_TRY_CAST) __ LPAREN __ e:expr __ KW_AS __ KW_DECIMAL __ LPAREN __ precision:int __ RPAREN __ RPAREN {
     return {
       type: 'cast',
       keyword: c.toLowerCase(),
@@ -2264,7 +2313,7 @@ cast_expr
       }]
     };
   }
-  / c:KW_CAST __ LPAREN __ e:expr __ KW_AS __ KW_DECIMAL __ LPAREN __ precision:int __ COMMA __ scale:int __ RPAREN __ RPAREN {
+  / c:(KW_CAST / KW_TRY_CAST) __ LPAREN __ e:expr __ KW_AS __ KW_DECIMAL __ LPAREN __ precision:int __ COMMA __ scale:int __ RPAREN __ RPAREN {
       return {
         type: 'cast',
         keyword: c.toLowerCase(),
@@ -2275,7 +2324,7 @@ cast_expr
         }]
       };
     }
-  / c:KW_CAST __ LPAREN __ e:expr __ KW_AS __ s:signedness __ t:KW_INTEGER? __ RPAREN { /* MySQL cast to un-/signed integer */
+  / c:(KW_CAST / KW_TRY_CAST) __ LPAREN __ e:expr __ KW_AS __ s:signedness __ t:KW_INTEGER? __ RPAREN { /* MySQL cast to un-/signed integer */
     return {
       type: 'cast',
       keyword: c.toLowerCase(),
@@ -2490,6 +2539,8 @@ KW_JOIN     = "JOIN"i     !ident_start
 KW_OUTER    = "OUTER"i    !ident_start
 KW_OVER     = "OVER"i     !ident_start
 KW_UNION    = "UNION"i    !ident_start
+KW_EXCEPT     = "EXCEPT"i     !ident_start
+KW_INTERSECT  = "INTERSECT"i  !ident_start
 KW_VALUES   = "VALUES"i   !ident_start
 KW_USING    = "USING"i    !ident_start
 
@@ -2516,6 +2567,8 @@ KW_IS       = "IS"i         !ident_start { return 'IS'; }
 KW_LIKE     = "LIKE"i       !ident_start { return 'LIKE'; }
 KW_ILIKE    = "ILIKE"i      !ident_start { return 'ILIKE'; }
 KW_RLIKE    = "RLIKE"i      !ident_start { return 'RLIKE'; }
+KW_REGEXP   = "REGEXP"i     !ident_start { return 'REGEXP'; }
+KW_DIV      = "DIV"i        !ident_start { return 'DIV'; }
 KW_EXISTS   = "EXISTS"i     !ident_start { return 'EXISTS'; }
 
 KW_NOT      = "NOT"i        !ident_start { return 'NOT'; }
@@ -2537,6 +2590,7 @@ KW_ELSE     = "ELSE"i       !ident_start
 KW_END      = "END"i        !ident_start
 
 KW_CAST     = "CAST"i       !ident_start { return 'CAST' }
+KW_TRY_CAST = "TRY_CAST"i   !ident_start { return 'TRY_CAST' }
 
 KW_CHAR     = "CHAR"i     !ident_start { return 'CHAR'; }
 KW_VARCHAR  = "VARCHAR"i  !ident_start { return 'VARCHAR';}
